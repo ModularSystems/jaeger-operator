@@ -2,21 +2,25 @@ package deployment
 
 import (
 	"fmt"
+	"sys"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/jaegertracing/jaeger-operator/pkg/apis/io/v1alpha1"
 	"github.com/jaegertracing/jaeger-operator/pkg/config/sampling"
-	"github.com/jaegertracing/jaeger-operator/pkg/config/ui"
+	configmap "github.com/jaegertracing/jaeger-operator/pkg/config/ui"
 	"github.com/jaegertracing/jaeger-operator/pkg/service"
 	"github.com/jaegertracing/jaeger-operator/pkg/storage"
 	"github.com/jaegertracing/jaeger-operator/pkg/util"
 )
+
+// GOOS stores the system ARCH to pass along image options for multi-arch support.
+const GOOS string = sys.GOOS
 
 // AllInOne builds pods for jaegertracing/all-in-one
 type AllInOne struct {
@@ -26,7 +30,11 @@ type AllInOne struct {
 // NewAllInOne builds a new AllInOne struct based on the given spec
 func NewAllInOne(jaeger *v1alpha1.Jaeger) *AllInOne {
 	if jaeger.Spec.AllInOne.Image == "" {
-		jaeger.Spec.AllInOne.Image = fmt.Sprintf("%s:%s", viper.GetString("jaeger-all-in-one-image"), viper.GetString("jaeger-version"))
+		if GOOS == "arm64" {
+			jaeger.Spec.AllInOne.Image = fmt.Sprintf("%s:%s-%s", viper.GetString("jaeger-all-in-one-image"), viper.GetString("jaeger-version"), "arm64")
+		} else {
+			jaeger.Spec.AllInOne.Image = fmt.Sprintf("%s:%s", viper.GetString("jaeger-all-in-one-image"), viper.GetString("jaeger-version"))
+		}
 	}
 
 	return &AllInOne{jaeger: jaeger}
